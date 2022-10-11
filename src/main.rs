@@ -1,0 +1,69 @@
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
+
+use std::str;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let listener = TcpListener::bind("127.0.0.1:8080").await?;
+
+    // "If the system receives a command message string containing a
+    // function code that it does not recognize, it will respond with
+    // a <SOH>9999FF1B<ETX>. The "9999" indicates that the system has
+    // not understood the command, while the "FF1B" is the appropriate
+    // checksum for the preceding <SOH>9999 string."
+    let unrecognized = [1, 57, 57, 57, 57, 70, 70, 49, 66, 3];
+
+    loop {
+        let (mut socket, _) = listener.accept().await?;
+
+        tokio::spawn(async move {
+            let mut control = [0; 1];
+            let mut raw_code = [0; 6];
+
+            loop {
+                match socket.read_exact(&mut control).await {
+                    Ok(n) if n == 0 => return,
+                    Ok(_) => (),
+                    Err(_) => return,
+                };
+
+                match socket.read_exact(&mut raw_code).await {
+                    Ok(n) if n == 0 => return,
+                    Ok(_) => (),
+                    Err(_) => return,
+                };
+
+                if control[0] != 1 {
+                    eprintln!("not startwith ^A");
+                    return;
+                }
+
+                let code = match str::from_utf8(&raw_code) {
+                    Ok(s) => s,
+                    _ => {
+                        eprintln!("Invalid UTF-8");
+                        return;
+                    }
+                };
+
+                match code {
+                    "I20100" => {
+                        eprintln!("IN-TANK INVENTORY");
+                        handle_i20100(&mut socket);
+                    }
+                    _ => {
+                        // Since incoming packets do not declare the length of
+                        // their data segment, if we don't recognize a command,
+                        // we must sever the connection.
+                        let _ = socket.write_all(&unrecognized).await;
+                        eprintln!("UNRECOGNIZED");
+                        return;
+                    }
+                }
+            }
+        });
+    }
+}
+
+fn handle_i20100(_sock: &mut TcpStream) {}
