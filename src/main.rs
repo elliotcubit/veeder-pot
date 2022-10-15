@@ -11,8 +11,12 @@ use std::str;
 
 fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
     let now_utc: DateTime<Utc> = Utc::now();
-    writer.write_record(&[now_utc.to_rfc3339(), source_ip, code]);
-    writer.flush();
+    if let Err(err) = writer
+        .write_record(&[now_utc.to_rfc3339(), source_ip.clone(), code.clone()])
+        .map(|()| writer.flush())
+    {
+        eprintln!("failed to log {} from {}: {}", code, source_ip, err)
+    };
 }
 
 #[tokio::main]
