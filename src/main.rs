@@ -1,11 +1,25 @@
+use csv::Writer;
+use std::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
+use chrono::{DateTime, Utc};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
 use std::str;
+
+fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
+    let now_utc: DateTime<Utc> = Utc::now();
+    writer.write_record(&[now_utc.to_rfc3339(), source_ip, code]);
+    writer.flush();
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind("127.0.0.1:8080").await?;
+
+    let logger = Arc::new(Mutex::new(Writer::from_writer(File::create("log.csv")?)));
 
     // "If the system receives a command message string containing a
     // function code that it does not recognize, it will respond with
@@ -15,7 +29,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let unrecognized = [1, 57, 57, 57, 57, 70, 70, 49, 66, 3];
 
     loop {
-        let (mut socket, _) = listener.accept().await?;
+        let (mut socket, source) = listener.accept().await?;
+        let logger = Arc::clone(&logger);
 
         tokio::spawn(async move {
             let mut control = [0; 1];
@@ -49,6 +64,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 match code {
                     "I20100" => {
+                        let mut w = logger.lock().await;
+                        log(&mut w, source.ip().to_string(), code.to_string());
                         eprintln!("IN-TANK INVENTORY");
                         handle_i20100(&mut socket);
                     }
@@ -56,6 +73,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         // Since incoming packets do not declare the length of
                         // their data segment, if we don't recognize a command,
                         // we must sever the connection.
+                        let mut w = logger.lock().await;
+                        log(&mut w, source.ip().to_string(), code.to_string());
+
                         let _ = socket.write_all(&unrecognized).await;
                         eprintln!("UNRECOGNIZED");
                         return;
