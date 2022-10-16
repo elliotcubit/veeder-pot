@@ -9,6 +9,14 @@ use tokio::sync::Mutex;
 
 use std::str;
 
+// Station header is always 4 lines
+//
+// This is templated from a real example in the wild; information changed.
+const STATION_HEADER_LINE1: &str = "WENDYS BP";
+const STATION_HEADER_LINE2: &str = "24 NIGHT INN AVE.";
+const STATION_HEADER_LINE3: &str = "ATLANTA,GA. 30301";
+const STATION_HEADER_LINE4: &str = "404-308-9102";
+
 fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
     let now_utc: DateTime<Utc> = Utc::now();
     if let Err(err) = writer
@@ -88,6 +96,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
     }
+}
+
+fn build_header(code: &str) -> String {
+    // TODO use "local" time, not UTC
+    let now_utc: DateTime<Utc> = Utc::now();
+    [
+        "\x01",
+        code,
+        now_utc
+            .format("%b %e, %Y %l:%M %p")
+            .to_string()
+            .to_uppercase() // Needed for %b
+            .as_str(),
+        "",
+        STATION_HEADER_LINE1,
+        STATION_HEADER_LINE2,
+        STATION_HEADER_LINE3,
+        STATION_HEADER_LINE4,
+        "",
+    ]
+    .join("\r\n")
 }
 
 fn handle_i20100(_sock: &mut TcpStream) {}
