@@ -10,7 +10,7 @@ pub struct Server {
     header_l4: String,
 
     tanks: Vec<Tank>,
-    tc_volume_temp: u32,
+    tc_volume_temp: f32,
 }
 
 pub const SOH: u8 = 1;
@@ -25,31 +25,31 @@ const UNRECOGNIZED: [u8; 10] = [SOH, 57, 57, 57, 57, 70, 70, 49, 66, ETX];
 
 pub struct Tank {
     product: String,
-    volume: u32,
-    capacity: u32,
-    height: f64,
-    water: f64,
-    temp: f64,
+    volume: f32,
+    capacity: f32,
+    height: f32,
+    water: f32,
+    temp: f32,
 }
 
 impl Tank {
     pub fn new() -> Self {
         Self {
             product: "UNLEAD".to_string(),
-            volume: 3107,
-            capacity: 12300,
+            volume: 3107.,
+            capacity: 12300.,
             height: 51.95,
             water: 5.48,
             temp: 56.46,
         }
     }
 
-    fn tc_volume(&self, tc_volume_temp: u32) -> u32 {
-        (f64::from(tc_volume_temp) * (f64::from(self.volume) / self.temp)).round() as u32
+    fn tc_volume(&self, tc_volume_temp: f32) -> f32 {
+        tc_volume_temp * self.volume / self.temp
     }
 
-    fn ullage(&self) -> u32 {
-        (f64::from(self.capacity) - f64::from(self.volume) - self.water).round() as u32
+    fn ullage(&self) -> f32 {
+        self.capacity - self.volume - self.water
     }
 }
 
@@ -63,7 +63,7 @@ impl Server {
             header_l4: "404-308-9102".to_string(),
             tanks: vec![Tank::new()],
             // They ship like this
-            tc_volume_temp: 60,
+            tc_volume_temp: 60.,
         }
     }
 
@@ -144,12 +144,12 @@ impl Server {
                         [
                             format!("{:>2}", i + 1),
                             curr.product.clone(),
-                            curr.volume.to_string(),
-                            curr.tc_volume(self.tc_volume_temp).to_string(),
-                            curr.ullage().to_string(),
-                            curr.height.to_string(),
-                            curr.water.to_string(),
-                            curr.temp.to_string(),
+                            format!("{:.0}", curr.volume),
+                            format!("{:.0}", curr.tc_volume(self.tc_volume_temp)),
+                            format!("{:.0}", curr.ullage()),
+                            format!("{:.2}", curr.height),
+                            format!("{:.2}", curr.water),
+                            format!("{:.2}", curr.temp),
                         ]
                         .iter()
                         .cloned(),
