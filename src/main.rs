@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 use chrono::{DateTime, Utc};
 
 mod server;
+use server::{Server, SOH};
 
 fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
     let now_utc: DateTime<Utc> = Utc::now();
@@ -32,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|()| writer.flush())??;
 
     let logger = Arc::new(Mutex::new(writer));
-    let server = Arc::new(server::Server::new());
+    let server = Arc::new(Server::new());
 
     loop {
         let (mut socket, source) = listener.accept().await?;
@@ -56,8 +57,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Err(_) => return,
                 };
 
-                if control[0] != 1 {
-                    eprintln!("not startwith ^A");
+                if control[0] != SOH {
+                    eprintln!("not startwith <SOH>");
                     return;
                 }
 
