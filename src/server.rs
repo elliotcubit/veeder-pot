@@ -61,7 +61,19 @@ impl Server {
         resp.push('\n' as u8);
 
         match code {
+            // In-tank inventory
             "I20100" => resp.append(&mut self.payload_i20100()),
+            // Delivery report
+            "I20200" => resp = UNRECOGNIZED.to_vec(),
+            // In-tank leak detect report
+            "I20300" => resp = UNRECOGNIZED.to_vec(),
+            // Shift report
+            "I20400" => resp = UNRECOGNIZED.to_vec(),
+            // In-tank status report
+            "I20500" => resp = UNRECOGNIZED.to_vec(),
+            // Set tank product label
+            // TODO - will need to parse TT portion
+            "S60200" => resp = UNRECOGNIZED.to_vec(),
             _ => resp = UNRECOGNIZED.to_vec(),
         }
 
