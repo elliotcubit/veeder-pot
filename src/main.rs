@@ -25,7 +25,13 @@ fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind("127.0.0.1:8080").await?;
 
-    let logger = Arc::new(Mutex::new(Writer::from_writer(File::create("log.csv")?)));
+    let mut writer = Writer::from_writer(File::create("log.csv")?);
+
+    writer
+        .write_record(&["time", "source_ip", "command"])
+        .map(|()| writer.flush())??;
+
+    let logger = Arc::new(Mutex::new(writer));
     let server = Arc::new(server::Server::new());
 
     loop {
