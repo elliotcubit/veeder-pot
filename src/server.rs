@@ -10,6 +10,7 @@ pub struct Server {
     header_l4: String,
 
     tanks: Vec<Tank>,
+    tc_volume_temp: u32,
 }
 
 pub const SOH: u8 = 1;
@@ -25,7 +26,6 @@ const UNRECOGNIZED: [u8; 10] = [SOH, 57, 57, 57, 57, 70, 70, 49, 66, ETX];
 pub struct Tank {
     product: String,
     volume: u32,
-    tc_volume: u32,
     ullage: u32,
     height: f64,
     water: f64,
@@ -37,12 +37,15 @@ impl Tank {
         Self {
             product: "UNLEAD".to_string(),
             volume: 3107,
-            tc_volume: 3169,
             ullage: 9187,
             height: 51.95,
             water: 5.48,
             temp: 56.46,
         }
+    }
+
+    fn tc_volume(&self, tc_volume_temp: u32) -> u32 {
+        (f64::from(tc_volume_temp) * (f64::from(self.volume) / self.temp)).round() as u32
     }
 }
 
@@ -55,6 +58,8 @@ impl Server {
             header_l3: "ATLANTA,GA. 30301".to_string(),
             header_l4: "404-308-9102".to_string(),
             tanks: vec![Tank::new()],
+            // They ship like this
+            tc_volume_temp: 60,
         }
     }
 
@@ -136,7 +141,7 @@ impl Server {
                             format!("{:>2}", i + 1),
                             curr.product.clone(),
                             curr.volume.to_string(),
-                            curr.tc_volume.to_string(),
+                            curr.tc_volume(self.tc_volume_temp).to_string(),
                             curr.ullage.to_string(),
                             curr.height.to_string(),
                             curr.water.to_string(),
