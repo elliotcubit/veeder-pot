@@ -1,13 +1,17 @@
 use csv::Writer;
 use std::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 
 use chrono::{DateTime, Utc};
+
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use std::str;
+use tabular::{Row, Table};
+
+mod server;
 
 // Station header is always 4 lines
 //
@@ -79,7 +83,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let mut w = logger.lock().await;
                         log(&mut w, source.ip().to_string(), code.to_string());
                         eprintln!("IN-TANK INVENTORY");
-                        handle_i20100(&mut socket);
+
+                        let _ = socket.write_all(build_header(&code).as_bytes()).await;
+                        let _ = socket.write_all(payload_i20100().as_bytes()).await;
                     }
                     _ => {
                         // Since incoming packets do not declare the length of
@@ -119,4 +125,36 @@ fn build_header(code: &str) -> String {
     .join("\r\n")
 }
 
-fn handle_i20100(_sock: &mut TcpStream) {}
+fn payload_i20100() -> String {
+    Table::new("{:^} {:<}             {:>} {:>} {:>} {:>} {:>} {:>}")
+        .set_line_end("\r\n")
+        .with_row(Row::from_cells(
+            [
+                "TANK",
+                "PRODUCT",
+                "VOLUME",
+                "TC VOLUME",
+                "ULLAGE",
+                "HEIGHT",
+                "WATER",
+                "TEMP",
+            ]
+            .iter()
+            .cloned(),
+        ))
+        .with_row(Row::from_cells(
+            [
+                " 1", "SUPER", "4600", "4653", "5840", "40.75", "0.7", "55.16",
+            ]
+            .iter()
+            .cloned(),
+        ))
+        .with_row(Row::from_cells(
+            [
+                " 2", "UNLEAD", "3107", "3169", "9187", "51.95", "5.48", "56.46",
+            ]
+            .iter()
+            .cloned(),
+        ))
+        .to_string()
+}
