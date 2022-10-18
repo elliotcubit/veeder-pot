@@ -26,7 +26,7 @@ const UNRECOGNIZED: [u8; 10] = [SOH, 57, 57, 57, 57, 70, 70, 49, 66, ETX];
 pub struct Tank {
     product: String,
     volume: u32,
-    ullage: u32,
+    capacity: u32,
     height: f64,
     water: f64,
     temp: f64,
@@ -37,7 +37,7 @@ impl Tank {
         Self {
             product: "UNLEAD".to_string(),
             volume: 3107,
-            ullage: 9187,
+            capacity: 12300,
             height: 51.95,
             water: 5.48,
             temp: 56.46,
@@ -46,6 +46,10 @@ impl Tank {
 
     fn tc_volume(&self, tc_volume_temp: u32) -> u32 {
         (f64::from(tc_volume_temp) * (f64::from(self.volume) / self.temp)).round() as u32
+    }
+
+    fn ullage(&self) -> u32 {
+        (f64::from(self.capacity) - f64::from(self.volume) - self.water).round() as u32
     }
 }
 
@@ -142,7 +146,7 @@ impl Server {
                             curr.product.clone(),
                             curr.volume.to_string(),
                             curr.tc_volume(self.tc_volume_temp).to_string(),
-                            curr.ullage.to_string(),
+                            curr.ullage().to_string(),
                             curr.height.to_string(),
                             curr.water.to_string(),
                             curr.temp.to_string(),
