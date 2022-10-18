@@ -1,25 +1,15 @@
 use csv::Writer;
 use std::fs::File;
+use std::str;
+
+use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
+use tokio::sync::Mutex;
 
 use chrono::{DateTime, Utc};
 
-use std::sync::Arc;
-use tokio::sync::Mutex;
-
-use std::str;
-use tabular::{Row, Table};
-
 mod server;
-
-// Station header is always 4 lines
-//
-// This is templated from a real example in the wild; information changed.
-const STATION_HEADER_LINE1: &str = "WENDYS BP";
-const STATION_HEADER_LINE2: &str = "24 NIGHT INN AVE.";
-const STATION_HEADER_LINE3: &str = "ATLANTA,GA. 30301";
-const STATION_HEADER_LINE4: &str = "404-308-9102";
 
 fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
     let now_utc: DateTime<Utc> = Utc::now();
@@ -36,17 +26,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind("127.0.0.1:8080").await?;
 
     let logger = Arc::new(Mutex::new(Writer::from_writer(File::create("log.csv")?)));
-
-    // "If the system receives a command message string containing a
-    // function code that it does not recognize, it will respond with
-    // a <SOH>9999FF1B<ETX>. The "9999" indicates that the system has
-    // not understood the command, while the "FF1B" is the appropriate
-    // checksum for the preceding <SOH>9999 string."
-    let unrecognized = [1, 57, 57, 57, 57, 70, 70, 49, 66, 3];
+    let server = Arc::new(server::Server::new());
 
     loop {
         let (mut socket, source) = listener.accept().await?;
         let logger = Arc::clone(&logger);
+        let server = Arc::clone(&server);
 
         tokio::spawn(async move {
             let mut control = [0; 1];
@@ -78,83 +63,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 };
 
-                match code {
-                    "I20100" => {
-                        let mut w = logger.lock().await;
-                        log(&mut w, source.ip().to_string(), code.to_string());
-                        eprintln!("IN-TANK INVENTORY");
+                let mut w = logger.lock().await;
+                log(&mut w, source.ip().to_string(), code.to_string());
 
-                        let _ = socket.write_all(build_header(&code).as_bytes()).await;
-                        let _ = socket.write_all(payload_i20100().as_bytes()).await;
-                    }
-                    _ => {
-                        // Since incoming packets do not declare the length of
-                        // their data segment, if we don't recognize a command,
-                        // we must sever the connection.
-                        let mut w = logger.lock().await;
-                        log(&mut w, source.ip().to_string(), code.to_string());
-
-                        let _ = socket.write_all(&unrecognized).await;
-                        eprintln!("UNRECOGNIZED");
-                        return;
-                    }
-                }
+                let _ = socket.write_all(&server.resp(code)).await;
             }
         });
     }
-}
-
-fn build_header(code: &str) -> String {
-    // TODO use "local" time, not UTC
-    let now_utc: DateTime<Utc> = Utc::now();
-    [
-        "\x01",
-        code,
-        now_utc
-            .format("%b %e, %Y %l:%M %p")
-            .to_string()
-            .to_uppercase() // Needed for %b
-            .as_str(),
-        "",
-        STATION_HEADER_LINE1,
-        STATION_HEADER_LINE2,
-        STATION_HEADER_LINE3,
-        STATION_HEADER_LINE4,
-        "",
-    ]
-    .join("\r\n")
-}
-
-fn payload_i20100() -> String {
-    Table::new("{:^} {:<}             {:>} {:>} {:>} {:>} {:>} {:>}")
-        .set_line_end("\r\n")
-        .with_row(Row::from_cells(
-            [
-                "TANK",
-                "PRODUCT",
-                "VOLUME",
-                "TC VOLUME",
-                "ULLAGE",
-                "HEIGHT",
-                "WATER",
-                "TEMP",
-            ]
-            .iter()
-            .cloned(),
-        ))
-        .with_row(Row::from_cells(
-            [
-                " 1", "SUPER", "4600", "4653", "5840", "40.75", "0.7", "55.16",
-            ]
-            .iter()
-            .cloned(),
-        ))
-        .with_row(Row::from_cells(
-            [
-                " 2", "UNLEAD", "3107", "3169", "9187", "51.95", "5.48", "56.46",
-            ]
-            .iter()
-            .cloned(),
-        ))
-        .to_string()
 }
