@@ -9,8 +9,10 @@ use tokio::sync::Mutex;
 
 use chrono::{DateTime, Utc};
 
+mod config;
 mod server;
 mod tank;
+
 use server::{Server, SOH};
 
 fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
@@ -25,16 +27,19 @@ fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let listener = TcpListener::bind("127.0.0.1:8080").await?;
+    let conf =
+        config::load_config("resources/config.toml").unwrap_or_else(|_| config::Config::default());
 
-    let mut writer = Writer::from_writer(File::create("log.csv")?);
+    let listener = TcpListener::bind(conf.addr).await?;
+
+    let mut writer = Writer::from_writer(File::create(conf.log_file)?);
 
     writer
         .write_record(&["time", "source_ip", "command"])
         .map(|()| writer.flush())??;
 
     let logger = Arc::new(Mutex::new(writer));
-    let server = Arc::new(Server::new());
+    let server = Arc::new(Server::new(conf.server));
 
     loop {
         let (mut socket, source) = listener.accept().await?;

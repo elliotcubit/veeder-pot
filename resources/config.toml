@@ -1,0 +1,32 @@
+addr = "127.0.0.1:10001"
+log_file = "log.csv"
+
+[server]
+tc_volume_temp = 60.00
+
+[server.header]
+line1 = "WENDYS BP"
+line2 = "24 NIGHT INN AVE."
+line3 = "ATLANTA,GA. 30301"
+line4 = "404-308-9102"
+
+[[server.tanks]]
+product = "UNLEAD"
+height = 51.95
+water = 5.48
+temp = 56.46
+shape = { length = 251.184, diameter = 120.0 }
+
+[[server.tanks]]
+product = "PREMIUM"
+height = 36.2
+water = 2.1
+temp = 55.70
+shape = { length = 251.184, diameter = 120.0 }
+
+[[server.tanks]]
+product = "DIESEL"
+height = 47.6
+water = 0.0
+temp = 58.45
+shape = { length = 251.184, diameter = 120.0 }

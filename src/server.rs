@@ -1,7 +1,9 @@
 use tabular::{Row, Table};
 
-use crate::tank::{HorizontalCylinder, Tank};
+use crate::tank::Tank;
 use chrono::{DateTime, Utc};
+
+use crate::config::ServerConfig;
 
 pub struct Server {
     // Station header is always 4 lines
@@ -25,38 +27,14 @@ const ETX: u8 = 3;
 const UNRECOGNIZED: [u8; 10] = [SOH, 57, 57, 57, 57, 70, 70, 49, 66, ETX];
 
 impl Server {
-    pub fn new() -> Self {
+    pub fn new(cfg: ServerConfig) -> Self {
         Self {
-            // This is templated from a real example in the wild; information anonymized.
-            header_l1: "WENDYS BP".to_string(),
-            header_l2: "24 NIGHT INN AVE.".to_string(),
-            header_l3: "ATLANTA,GA. 30301".to_string(),
-            header_l4: "404-308-9102".to_string(),
-            tanks: vec![
-                Tank::new(
-                    "UNLEAD".to_string(),
-                    51.95,
-                    5.48,
-                    56.46,
-                    HorizontalCylinder::new(251.184, 120.0),
-                ),
-                Tank::new(
-                    "PREMIUM".to_string(),
-                    36.2,
-                    2.1,
-                    55.70,
-                    HorizontalCylinder::new(251.184, 120.0),
-                ),
-                Tank::new(
-                    "DIESEL".to_string(),
-                    47.6,
-                    0.0,
-                    58.45,
-                    HorizontalCylinder::new(251.184, 120.0),
-                ),
-            ],
-            // They ship like this
-            tc_volume_temp: 60.,
+            header_l1: cfg.header.line1,
+            header_l2: cfg.header.line2,
+            header_l3: cfg.header.line3,
+            header_l4: cfg.header.line4,
+            tanks: cfg.tanks.iter().map(|x| Tank::new(x)).collect(),
+            tc_volume_temp: cfg.tc_volume_temp,
         }
     }
 

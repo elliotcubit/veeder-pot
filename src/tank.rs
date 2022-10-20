@@ -1,3 +1,5 @@
+use crate::config::{ShapeConfig, TankConfig};
+
 const CUBIC_INCH_TO_GALLON: f32 = 0.004329;
 
 pub struct Tank {
@@ -12,19 +14,13 @@ pub struct Tank {
 }
 
 impl Tank {
-    pub fn new(
-        product: String,
-        height: f32,
-        water: f32,
-        temp: f32,
-        shape: HorizontalCylinder,
-    ) -> Self {
+    pub fn new(cfg: &TankConfig) -> Self {
         Self {
-            product,
-            height,
-            water,
-            temp,
-            shape,
+            product: cfg.product.clone(),
+            height: cfg.height,
+            water: cfg.water,
+            temp: cfg.temp,
+            shape: HorizontalCylinder::new(&cfg.shape),
         }
     }
 
@@ -53,8 +49,11 @@ pub struct HorizontalCylinder {
 }
 
 impl HorizontalCylinder {
-    pub fn new(length: f32, diameter: f32) -> Self {
-        Self { length, diameter }
+    pub fn new(cfg: &ShapeConfig) -> Self {
+        Self {
+            length: cfg.length,
+            diameter: cfg.diameter,
+        }
     }
     // Returned in gallons
     fn volume(&self) -> f32 {
