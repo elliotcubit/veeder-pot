@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 use chrono::{DateTime, Utc};
 
 mod server;
+mod tank;
 use server::{Server, SOH};
 
 fn log(writer: &mut Writer<File>, source_ip: String, code: String) {

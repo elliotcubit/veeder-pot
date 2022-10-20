@@ -1,5 +1,6 @@
 use tabular::{Row, Table};
 
+use crate::tank::{HorizontalCylinder, Tank};
 use chrono::{DateTime, Utc};
 
 pub struct Server {
@@ -15,7 +16,6 @@ pub struct Server {
 
 pub const SOH: u8 = 1;
 const ETX: u8 = 3;
-const CUBIC_INCH_TO_GALLON: f32 = 0.004329;
 
 // "If the system receives a command message string containing a
 // function code that it does not recognize, it will respond with
@@ -23,75 +23,6 @@ const CUBIC_INCH_TO_GALLON: f32 = 0.004329;
 // not understood the command, while the "FF1B" is the appropriate
 // checksum for the preceding <SOH>9999 string."
 const UNRECOGNIZED: [u8; 10] = [SOH, 57, 57, 57, 57, 70, 70, 49, 66, ETX];
-
-struct HorizontalCylinder {
-    // Dimensions in inches
-    length: f32,
-    diameter: f32,
-}
-
-impl HorizontalCylinder {
-    // Returned in gallons
-    fn volume(&self) -> f32 {
-        let radius = self.diameter / 2.0;
-        std::f32::consts::PI * radius * radius * self.length * CUBIC_INCH_TO_GALLON
-    }
-
-    // fill returns how much of the tank is filled, in gallons, given
-    // how far from the bottom the liquid rises in inches.
-    fn fill(&self, height: f32) -> f32 {
-        let radius = self.diameter / 2.0;
-        if height > radius {
-            self.volume() - self.fill(2.0 * radius - height)
-        } else {
-            let m = radius - height;
-            let theta = 2.0 * (m / radius).acos();
-            let a = 0.5 * radius * radius * (theta - theta.sin());
-            a * self.length * CUBIC_INCH_TO_GALLON
-        }
-    }
-}
-
-pub struct Tank {
-    product: String,
-    height: f32,
-
-    // In gallons
-    water: f32,
-    temp: f32,
-
-    shape: HorizontalCylinder,
-}
-
-impl Tank {
-    pub fn new() -> Self {
-        Self {
-            product: "UNLEAD".to_string(),
-            height: 51.95,
-            water: 5.48,
-            temp: 56.46,
-
-            shape: HorizontalCylinder {
-                // ~= 2,841,300 cubic inches == 12300 gallons
-                length: 251.184,
-                diameter: 120.0,
-            },
-        }
-    }
-
-    fn tc_volume(&self, tc_volume_temp: f32) -> f32 {
-        tc_volume_temp * self.shape.fill(self.height) / self.temp
-    }
-
-    fn ullage(&self) -> f32 {
-        // Subtract the water from ullage... the water needs to be accounted for somewhere.
-        // I'm not sure how the water level is measured, but I guess we will treat
-        // volume/height/fill as the volume of only gasoline, and water as somehow "magically"
-        // acquired through separate means. Since the water level should always be very low
-        // (zero is a reasonable value), it shouldn't matter.
-        self.shape.volume() - self.shape.fill(self.height) - self.water
-    }
-}
 
 impl Server {
     pub fn new() -> Self {
@@ -101,7 +32,29 @@ impl Server {
             header_l2: "24 NIGHT INN AVE.".to_string(),
             header_l3: "ATLANTA,GA. 30301".to_string(),
             header_l4: "404-308-9102".to_string(),
-            tanks: vec![Tank::new()],
+            tanks: vec![
+                Tank::new(
+                    "UNLEAD".to_string(),
+                    51.95,
+                    5.48,
+                    56.46,
+                    HorizontalCylinder::new(251.184, 120.0),
+                ),
+                Tank::new(
+                    "PREMIUM".to_string(),
+                    36.2,
+                    2.1,
+                    55.70,
+                    HorizontalCylinder::new(251.184, 120.0),
+                ),
+                Tank::new(
+                    "DIESEL".to_string(),
+                    47.6,
+                    0.0,
+                    58.45,
+                    HorizontalCylinder::new(251.184, 120.0),
+                ),
+            ],
             // They ship like this
             tc_volume_temp: 60.,
         }
@@ -184,7 +137,7 @@ impl Server {
                         [
                             format!("{:>2}", i + 1),
                             curr.product.clone(),
-                            format!("{:.0}", curr.shape.fill(curr.height)),
+                            format!("{:.0}", curr.fill()),
                             format!("{:.0}", curr.tc_volume(self.tc_volume_temp)),
                             format!("{:.0}", curr.ullage()),
                             format!("{:.2}", curr.height),
