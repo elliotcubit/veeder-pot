@@ -66,7 +66,7 @@ impl Server {
         tank: usize,
         product: String,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        if tank > 0 && self.tanks.len() < tank + 1 {
+        if tank > 0 && self.tanks.len() < tank {
             Err("no such tank")?
         }
 
