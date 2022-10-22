@@ -63,22 +63,21 @@ impl Server {
 
     pub fn s602tt(
         &mut self,
-        i: usize,
+        tank: usize,
         product: String,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        if i == 0 {
-            self.tanks.iter_mut().for_each(|t| {
-                t.product = product.clone();
-            });
-        } else {
-            if let None = self.tanks.get_mut(i - 1).map(|t| {
-                t.product = product;
-            }) {
-                Err("tank doesn't exist")?
-            }
+        if tank > 0 && self.tanks.len() < tank + 1 {
+            Err("no such tank")?
         }
 
-        // TODO - do real servers only return the changed tanks?
+        self.tanks
+            .iter_mut()
+            .enumerate()
+            .filter(|(i, _)| tank == 0 || *i == tank - 1)
+            .for_each(|(_, t)| {
+                t.product = product.clone();
+            });
+
         Ok(self
             .tanks
             .iter()
@@ -104,11 +103,11 @@ impl Server {
             .into_bytes())
     }
 
-    // TODO take optional tank argument
-    pub fn i20100(&self) -> Vec<u8> {
+    pub fn i20100(&self, tank: usize) -> Vec<u8> {
         self.tanks
             .iter()
             .enumerate()
+            .filter(|(i, _)| tank == 0 || *i == tank - 1)
             .fold(
                 Table::new("{:^} {:<} {:>} {:>} {:>} {:>} {:>} {:>}")
                     .set_line_end("\r\n")

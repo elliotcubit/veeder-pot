@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // In-tank inventory
                     "I201" => {
                         resp.append(&mut "IN-TANK INVENTORY\r\n\r\n".to_string().into_bytes());
-                        resp.append(&mut server.read().await.i20100());
+                        resp.append(&mut server.read().await.i20100(tank));
                         resp.push('\r' as u8);
                         resp.push('\n' as u8);
                         resp.push(ETX);
