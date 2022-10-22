@@ -13,7 +13,7 @@ mod config;
 mod server;
 mod tank;
 
-use server::{Server, SOH};
+use server::{Server, ETX, SOH, UNRECOGNIZED};
 
 fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
     let now_utc: DateTime<Utc> = Utc::now();
@@ -79,7 +79,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut w = logger.lock().await;
                 log(&mut w, source.ip().to_string(), code.to_string());
 
-                let _ = socket.write_all(&server.resp(code)).await;
+                let mut resp = server.build_header(code);
+                resp.push('\r' as u8);
+                resp.push('\n' as u8);
+
+                match code {
+                    // In-tank inventory
+                    "I20100" => resp.append(&mut server.payload_i20100()),
+                    // Delivery report
+                    "I20200" => resp = UNRECOGNIZED.to_vec(),
+                    // In-tank leak detect report
+                    "I20300" => resp = UNRECOGNIZED.to_vec(),
+                    // Shift report
+                    "I20400" => resp = UNRECOGNIZED.to_vec(),
+                    // In-tank status report
+                    "I20500" => resp = UNRECOGNIZED.to_vec(),
+                    // Set tank product label
+                    // TODO - will need to parse TT portion
+                    "S60200" => resp = UNRECOGNIZED.to_vec(),
+                    _ => resp = UNRECOGNIZED.to_vec(),
+                }
+
+                resp.push('\r' as u8);
+                resp.push('\r' as u8);
+                resp.push(ETX);
+
+                let _ = socket.write_all(&resp).await;
             }
         });
     }
