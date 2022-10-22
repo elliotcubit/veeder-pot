@@ -132,6 +132,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // Set tank product label
                     // TODO - will need to parse TT portion
                     "S602" => {
+                        resp.append(&mut "TANK PRODUCT LABEL\r\n\r\n".to_string().into_bytes());
+
                         // The manual says the new label must be 20 chars...!?
                         let mut raw_product = [0; 20];
 

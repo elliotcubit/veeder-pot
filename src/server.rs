@@ -68,36 +68,30 @@ impl Server {
             }
         }
 
-        let mut resp = "TANK PRODUCT LABEL\r\n\r\n".to_string().into_bytes();
-
         // TODO - do real servers only return the changed tanks?
-        resp.append(
-            &mut self
-                .tanks
-                .iter()
-                .enumerate()
-                .fold(
-                    // TODO: is there actually extra space here?
-                    // the manual's example response has 3 spaces
-                    Table::new("{:^}   {:<}")
-                        .set_line_end("\r\n")
-                        .with_row(Row::from_cells(["TANK", "PRODUCT LABEL"])),
-                    |acc, (i, curr)| {
-                        acc.with_row(Row::from_cells(
-                            [
-                                format!("{:>2}", i + 1),
-                                format!("{:<20}", curr.product.clone()),
-                            ]
-                            .iter()
-                            .cloned(),
-                        ))
-                    },
-                )
-                .to_string()
-                .into_bytes(),
-        );
-
-        Ok(resp)
+        Ok(self
+            .tanks
+            .iter()
+            .enumerate()
+            .fold(
+                // TODO: is there actually extra space here?
+                // the manual's example response has 3 spaces
+                Table::new("{:^}   {:<}")
+                    .set_line_end("\r\n")
+                    .with_row(Row::from_cells(["TANK", "PRODUCT LABEL"])),
+                |acc, (i, curr)| {
+                    acc.with_row(Row::from_cells(
+                        [
+                            format!("{:>2}", i + 1),
+                            format!("{:<20}", curr.product.clone()),
+                        ]
+                        .iter()
+                        .cloned(),
+                    ))
+                },
+            )
+            .to_string()
+            .into_bytes())
     }
 
     pub fn i20100(&self) -> Vec<u8> {
