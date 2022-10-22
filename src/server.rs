@@ -16,16 +16,6 @@ pub struct Server {
     tc_volume_temp: f32,
 }
 
-pub const SOH: u8 = 1;
-pub const ETX: u8 = 3;
-
-// "If the system receives a command message string containing a
-// function code that it does not recognize, it will respond with
-// a <SOH>9999FF1B<ETX>. The "9999" indicates that the system has
-// not understood the command, while the "FF1B" is the appropriate
-// checksum for the preceding <SOH>9999 string."
-pub const UNRECOGNIZED: [u8; 10] = [SOH, 57, 57, 57, 57, 70, 70, 49, 66, ETX];
-
 impl Server {
     pub fn new(cfg: ServerConfig) -> Self {
         Self {

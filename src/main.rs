@@ -13,7 +13,17 @@ mod config;
 mod server;
 mod tank;
 
-use server::{Server, ETX, SOH, UNRECOGNIZED};
+use server::Server;
+
+const SOH: u8 = 1;
+const ETX: u8 = 3;
+
+// "If the system receives a command message string containing a
+// function code that it does not recognize, it will respond with
+// a <SOH>9999FF1B<ETX>. The "9999" indicates that the system has
+// not understood the command, while the "FF1B" is the appropriate
+// checksum for the preceding <SOH>9999 string."
+const UNRECOGNIZED: [u8; 10] = [SOH, 57, 57, 57, 57, 70, 70, 49, 66, ETX];
 
 fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
     let now_utc: DateTime<Utc> = Utc::now();
