@@ -4,7 +4,7 @@ use std::str;
 
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{Mutex, RwLock};
 
 use chrono::{DateTime, Utc};
@@ -58,8 +58,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         tokio::spawn(async move {
             let mut control = [0; 1];
-            let mut raw_code = [0; 4];
-            let mut raw_tank = [0; 2];
 
             loop {
                 match socket.read_exact(&mut control).await {
@@ -68,15 +66,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Err(_) => return,
                 };
 
-                match socket.read_exact(&mut raw_code).await {
-                    Ok(n) if n == 0 => return,
-                    Ok(_) => (),
+                let code = match read_utf8_string(&mut socket, 4).await {
+                    Ok(s) => s,
                     Err(_) => return,
                 };
 
-                match socket.read_exact(&mut raw_tank).await {
-                    Ok(n) if n == 0 => return,
-                    Ok(_) => (),
+                let tank = match read_utf8_string(&mut socket, 2).await {
+                    Ok(s) => match str::parse::<usize>(&s) {
+                        Ok(s) => s,
+                        _ => {
+                            eprintln!("Tank NaN");
+                            return;
+                        }
+                    },
                     Err(_) => return,
                 };
 
@@ -85,42 +87,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     return;
                 }
 
-                let code = match str::from_utf8(&raw_code) {
-                    Ok(s) => s,
-                    _ => {
-                        eprintln!("Invalid UTF-8");
-                        return;
-                    }
-                };
-
-                let utf8_tank = match str::from_utf8(&raw_tank) {
-                    Ok(s) => s,
-                    _ => {
-                        eprintln!("Invalid tank");
-                        return;
-                    }
-                };
-
-                let tank = match str::parse::<usize>(utf8_tank) {
-                    Ok(s) => s,
-                    _ => {
-                        eprintln!("Tank NaN");
-                        return;
-                    }
-                };
-
                 let mut w = logger.lock().await;
                 log(&mut w, source.ip().to_string(), code.to_string());
 
-                let mut resp = server.read().await.build_header(code);
+                let mut resp = server.read().await.build_header(&code);
                 resp.push('\r' as u8);
                 resp.push('\n' as u8);
 
-                match code {
+                match code.as_ref() {
                     // In-tank inventory
                     "I201" => {
                         resp.append(&mut "IN-TANK INVENTORY\r\n\r\n".to_string().into_bytes());
                         resp.append(&mut server.read().await.i20100());
+                        resp.push('\r' as u8);
+                        resp.push('\n' as u8);
+                        resp.push(ETX);
                     }
                     // Delivery report
                     "I202" => resp = UNRECOGNIZED.to_vec(),
@@ -132,25 +113,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "I205" => resp = UNRECOGNIZED.to_vec(),
                     // Set print header line
                     "S503" => {
-                        // The manual says the new label must be 20 chars...!?
-                        let mut raw_label = [0; 20];
-
-                        match socket.read_exact(&mut raw_label).await {
-                            Ok(n) if n == 0 => return,
-                            Ok(_) => (),
+                        let label = match read_utf8_string(&mut socket, 20).await {
+                            Ok(s) => s,
+                            // If we don't get the expected payload, we don't know
+                            // how many bytes we were supposed to read / when the next
+                            // message starts, so we need to just die.
+                            //
+                            // We could also send UNRECOGNIZED here before severing the connection
                             Err(_) => return,
                         };
 
-                        let label = match str::from_utf8(&raw_label) {
-                            Ok(s) => s,
-                            _ => {
-                                eprintln!("Invalid UTF-8");
-                                return;
+                        match server.write().await.s503tt(tank, label) {
+                            Ok(mut b) => {
+                                resp.append(&mut b);
+                                resp.push('\r' as u8);
+                                resp.push('\n' as u8);
+                                resp.push(ETX);
                             }
-                        };
-
-                        match server.write().await.s503tt(tank, label.to_string()) {
-                            Ok(mut b) => resp.append(&mut b),
                             Err(_) => resp = UNRECOGNIZED.to_vec(),
                         }
                     }
@@ -158,37 +137,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "S602" => {
                         resp.append(&mut "TANK PRODUCT LABEL\r\n\r\n".to_string().into_bytes());
 
-                        // The manual says the new label must be 20 chars...!?
-                        let mut raw_product = [0; 20];
-
-                        match socket.read_exact(&mut raw_product).await {
-                            Ok(n) if n == 0 => return,
-                            Ok(_) => (),
+                        let product = match read_utf8_string(&mut socket, 20).await {
+                            Ok(s) => s,
+                            // If we don't get the expected payload, we don't know
+                            // how many bytes we were supposed to read / when the next
+                            // message starts, so we need to just die.
+                            //
+                            // We could also send UNRECOGNIZED here before severing the connection
                             Err(_) => return,
                         };
 
-                        let product = match str::from_utf8(&raw_product) {
-                            Ok(s) => s,
-                            _ => {
-                                eprintln!("Invalid UTF-8");
-                                return;
-                            }
-                        };
-
                         match server.write().await.s602tt(tank, product.to_string()) {
-                            Ok(mut b) => resp.append(&mut b),
+                            Ok(mut b) => {
+                                resp.append(&mut b);
+                                resp.push('\r' as u8);
+                                resp.push('\n' as u8);
+                                resp.push(ETX);
+                            }
                             Err(_) => resp = UNRECOGNIZED.to_vec(),
                         }
                     }
                     _ => resp = UNRECOGNIZED.to_vec(),
                 }
 
-                resp.push('\r' as u8);
-                resp.push('\r' as u8);
-                resp.push(ETX);
-
                 let _ = socket.write_all(&resp).await;
             }
         });
     }
+}
+
+async fn read_utf8_string(
+    socket: &mut TcpStream,
+    n: usize,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let mut buf = vec![0; n];
+    socket.read_exact(&mut buf).await?;
+    Ok(str::from_utf8(&buf)?.to_string())
 }
