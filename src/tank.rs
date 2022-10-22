@@ -16,7 +16,7 @@ pub struct Tank {
 impl Tank {
     pub fn new(cfg: &TankConfig) -> Self {
         Self {
-            product: cfg.product.clone(),
+            product: format!("{:<20}", cfg.product.clone()),
             height: cfg.height,
             water: cfg.water,
             temp: cfg.temp,

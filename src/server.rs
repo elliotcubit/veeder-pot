@@ -129,7 +129,7 @@ impl Server {
                     acc.with_row(Row::from_cells(
                         [
                             format!("{:>2}", i + 1),
-                            format!("{:<20}", curr.product.clone()),
+                            curr.product.clone(),
                             format!("{:.0}", curr.fill()),
                             format!("{:.0}", curr.tc_volume(self.tc_volume_temp)),
                             format!("{:.0}", curr.ullage()),
