@@ -60,7 +60,21 @@ impl Server {
         .into_bytes()
     }
 
-    pub fn payload_i20100(&self) -> Vec<u8> {
+    pub fn s602tt(
+        &mut self,
+        i: usize,
+        product: String,
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        self.tanks
+            .get_mut(i)
+            .map(|t| {
+                t.product = product;
+                "TK".to_string().into_bytes()
+            })
+            .ok_or(Err("tank does not exist")?)
+    }
+
+    pub fn i20100(&self) -> Vec<u8> {
         self.tanks
             .iter()
             .enumerate()

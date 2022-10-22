@@ -5,7 +5,7 @@ use std::str;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use chrono::{DateTime, Utc};
 
@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|()| writer.flush())??;
 
     let logger = Arc::new(Mutex::new(writer));
-    let server = Arc::new(Server::new(conf.server));
+    let server = Arc::new(RwLock::new(Server::new(conf.server)));
 
     loop {
         let (mut socket, source) = listener.accept().await?;
@@ -48,7 +48,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         tokio::spawn(async move {
             let mut control = [0; 1];
-            let mut raw_code = [0; 6];
+            let mut raw_code = [0; 4];
+            let mut raw_tank = [0; 2];
 
             loop {
                 match socket.read_exact(&mut control).await {
@@ -58,6 +59,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 };
 
                 match socket.read_exact(&mut raw_code).await {
+                    Ok(n) if n == 0 => return,
+                    Ok(_) => (),
+                    Err(_) => return,
+                };
+
+                match socket.read_exact(&mut raw_tank).await {
                     Ok(n) if n == 0 => return,
                     Ok(_) => (),
                     Err(_) => return,
@@ -76,27 +83,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 };
 
+                let utf8_tank = match str::from_utf8(&raw_tank) {
+                    Ok(s) => s,
+                    _ => {
+                        eprintln!("Invalid tank");
+                        return;
+                    }
+                };
+
+                let tank = match str::parse::<usize>(utf8_tank) {
+                    Ok(s) => s,
+                    _ => {
+                        eprintln!("Tank NaN");
+                        return;
+                    }
+                };
+
                 let mut w = logger.lock().await;
                 log(&mut w, source.ip().to_string(), code.to_string());
 
-                let mut resp = server.build_header(code);
+                let mut resp = server.read().await.build_header(code);
                 resp.push('\r' as u8);
                 resp.push('\n' as u8);
 
                 match code {
                     // In-tank inventory
-                    "I20100" => resp.append(&mut server.payload_i20100()),
+                    "I201" => resp.append(&mut server.read().await.i20100()),
                     // Delivery report
-                    "I20200" => resp = UNRECOGNIZED.to_vec(),
+                    "I202" => resp = UNRECOGNIZED.to_vec(),
                     // In-tank leak detect report
-                    "I20300" => resp = UNRECOGNIZED.to_vec(),
+                    "I203" => resp = UNRECOGNIZED.to_vec(),
                     // Shift report
-                    "I20400" => resp = UNRECOGNIZED.to_vec(),
+                    "I204" => resp = UNRECOGNIZED.to_vec(),
                     // In-tank status report
-                    "I20500" => resp = UNRECOGNIZED.to_vec(),
+                    "I205" => resp = UNRECOGNIZED.to_vec(),
                     // Set tank product label
                     // TODO - will need to parse TT portion
-                    "S60200" => resp = UNRECOGNIZED.to_vec(),
+                    "S602" => match server.write().await.s602tt(tank, "NEW PRODUCT".to_string()) {
+                        Ok(mut b) => resp.append(&mut b),
+                        Err(_) => resp = UNRECOGNIZED.to_vec(),
+                    },
                     _ => resp = UNRECOGNIZED.to_vec(),
                 }
 
