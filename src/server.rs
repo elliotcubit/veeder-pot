@@ -19,6 +19,7 @@ pub struct Server {
 impl Server {
     pub fn new(cfg: ServerConfig) -> Self {
         Self {
+            // TODO: pad these lines out to 20 characters
             header_l1: cfg.header.line1,
             header_l2: cfg.header.line2,
             header_l3: cfg.header.line3,
@@ -40,10 +41,10 @@ impl Server {
                 .to_uppercase() // Needed for %b
                 .as_str(),
             "",
-            &self.header_l1,
-            &self.header_l2,
-            &self.header_l3,
-            &self.header_l4,
+            &format!("{:<20}", &self.header_l1),
+            &format!("{:<20}", &self.header_l2),
+            &format!("{:<20}", &self.header_l3),
+            &format!("{:<20}", &self.header_l4),
             "",
         ]
         .join("\r\n")
@@ -55,13 +56,48 @@ impl Server {
         i: usize,
         product: String,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        self.tanks
-            .get_mut(i)
-            .map(|t| {
+        if i == 0 {
+            self.tanks.iter_mut().for_each(|t| {
+                t.product = product.clone();
+            });
+        } else {
+            if let None = self.tanks.get_mut(i - 1).map(|t| {
                 t.product = product;
-                "TK".to_string().into_bytes()
-            })
-            .ok_or(Err("tank does not exist")?)
+            }) {
+                Err("tank doesn't exist")?
+            }
+        }
+
+        let mut resp = "TANK PRODUCT LABEL\r\n\r\n".to_string().into_bytes();
+
+        // TODO - do real servers only return the changed tanks?
+        resp.append(
+            &mut self
+                .tanks
+                .iter()
+                .enumerate()
+                .fold(
+                    // TODO: is there actually extra space here?
+                    // the manual's example response has 3 spaces
+                    Table::new("{:^}   {:<}")
+                        .set_line_end("\r\n")
+                        .with_row(Row::from_cells(["TANK", "PRODUCT LABEL"])),
+                    |acc, (i, curr)| {
+                        acc.with_row(Row::from_cells(
+                            [
+                                format!("{:>2}", i + 1),
+                                format!("{:<20}", curr.product.clone()),
+                            ]
+                            .iter()
+                            .cloned(),
+                        ))
+                    },
+                )
+                .to_string()
+                .into_bytes(),
+        );
+
+        Ok(resp)
     }
 
     pub fn i20100(&self) -> Vec<u8> {
@@ -69,7 +105,7 @@ impl Server {
             .iter()
             .enumerate()
             .fold(
-                Table::new("{:^} {:<}             {:>} {:>} {:>} {:>} {:>} {:>}")
+                Table::new("{:^} {:<} {:>} {:>} {:>} {:>} {:>} {:>}")
                     .set_line_end("\r\n")
                     .with_row(Row::from_cells(
                         [
@@ -89,7 +125,7 @@ impl Server {
                     acc.with_row(Row::from_cells(
                         [
                             format!("{:>2}", i + 1),
-                            curr.product.clone(),
+                            format!("{:<20}", curr.product.clone()),
                             format!("{:.0}", curr.fill()),
                             format!("{:.0}", curr.tc_volume(self.tc_volume_temp)),
                             format!("{:.0}", curr.ullage()),

@@ -127,12 +127,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "I204" => resp = UNRECOGNIZED.to_vec(),
                     // In-tank status report
                     "I205" => resp = UNRECOGNIZED.to_vec(),
+                    // Set print header line
+                    "S503" => resp = UNRECOGNIZED.to_vec(),
                     // Set tank product label
                     // TODO - will need to parse TT portion
-                    "S602" => match server.write().await.s602tt(tank, "NEW PRODUCT".to_string()) {
-                        Ok(mut b) => resp.append(&mut b),
-                        Err(_) => resp = UNRECOGNIZED.to_vec(),
-                    },
+                    "S602" => {
+                        // The manual says the new label must be 20 chars...!?
+                        let mut raw_product = [0; 20];
+
+                        match socket.read_exact(&mut raw_product).await {
+                            Ok(n) if n == 0 => return,
+                            Ok(_) => (),
+                            Err(_) => return,
+                        };
+
+                        let product = match str::from_utf8(&raw_product) {
+                            Ok(s) => s,
+                            _ => {
+                                eprintln!("Invalid UTF-8");
+                                return;
+                            }
+                        };
+
+                        match server.write().await.s602tt(tank, product.to_string()) {
+                            Ok(mut b) => resp.append(&mut b),
+                            Err(_) => resp = UNRECOGNIZED.to_vec(),
+                        }
+                    }
                     _ => resp = UNRECOGNIZED.to_vec(),
                 }
 
