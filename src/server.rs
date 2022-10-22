@@ -7,10 +7,7 @@ use crate::config::ServerConfig;
 
 pub struct Server {
     // Station header is always 4 lines
-    header_l1: String,
-    header_l2: String,
-    header_l3: String,
-    header_l4: String,
+    header: [String; 4],
 
     tanks: Vec<Tank>,
     tc_volume_temp: f32,
@@ -19,11 +16,12 @@ pub struct Server {
 impl Server {
     pub fn new(cfg: ServerConfig) -> Self {
         Self {
-            // TODO: pad these lines out to 20 characters
-            header_l1: cfg.header.line1,
-            header_l2: cfg.header.line2,
-            header_l3: cfg.header.line3,
-            header_l4: cfg.header.line4,
+            header: [
+                format!("{:<20}", cfg.header.line1),
+                format!("{:<20}", cfg.header.line2),
+                format!("{:<20}", cfg.header.line3),
+                format!("{:<20}", cfg.header.line4),
+            ],
             tanks: cfg.tanks.iter().map(|x| Tank::new(x)).collect(),
             tc_volume_temp: cfg.tc_volume_temp,
         }
@@ -41,10 +39,10 @@ impl Server {
                 .to_uppercase() // Needed for %b
                 .as_str(),
             "",
-            &format!("{:<20}", &self.header_l1),
-            &format!("{:<20}", &self.header_l2),
-            &format!("{:<20}", &self.header_l3),
-            &format!("{:<20}", &self.header_l4),
+            &self.header[0],
+            &self.header[1],
+            &self.header[2],
+            &self.header[3],
             "",
         ]
         .join("\r\n")
