@@ -118,7 +118,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 match code {
                     // In-tank inventory
-                    "I201" => resp.append(&mut server.read().await.i20100()),
+                    "I201" => {
+                        resp.append(&mut "IN-TANK INVENTORY\r\n\r\n".to_string().into_bytes());
+                        resp.append(&mut server.read().await.i20100());
+                    }
                     // Delivery report
                     "I202" => resp = UNRECOGNIZED.to_vec(),
                     // In-tank leak detect report
