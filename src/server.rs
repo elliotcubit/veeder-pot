@@ -49,6 +49,18 @@ impl Server {
         .into_bytes()
     }
 
+    pub fn s503tt(
+        &mut self,
+        i: usize,
+        label: String,
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        if i < 1 || i > 4 {
+            Err("invalid line number")?
+        }
+        self.header[i - 1] = label.clone();
+        Ok(format!("# {}: {}", i, &label).into_bytes())
+    }
+
     pub fn s602tt(
         &mut self,
         i: usize,
@@ -92,6 +104,7 @@ impl Server {
             .into_bytes())
     }
 
+    // TODO take optional tank argument
     pub fn i20100(&self) -> Vec<u8> {
         self.tanks
             .iter()
