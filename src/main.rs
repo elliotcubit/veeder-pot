@@ -110,7 +110,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // Shift report
                     "I204" => resp = UNRECOGNIZED.to_vec(),
                     // In-tank status report
-                    "I205" => resp = UNRECOGNIZED.to_vec(),
+                    "I205" => {
+                        resp.append(&mut server.read().await.i205(tank));
+                        resp.push('\r' as u8);
+                        resp.push('\n' as u8);
+                        resp.push(ETX);
+                    }
                     // Set print header line
                     "S503" => {
                         let label = match read_utf8_string(&mut socket, 20).await {

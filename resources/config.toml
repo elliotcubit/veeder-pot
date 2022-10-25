@@ -16,6 +16,7 @@ height = 51.95
 water = 5.48
 temp = 56.46
 shape = { length = 251.184, diameter = 120.0 }
+warnings = ["HighWaterAlarm", "HighWaterWarning"]
 
 [[server.tanks]]
 product = "PREMIUM"
@@ -23,6 +24,7 @@ height = 36.2
 water = 2.1
 temp = 55.70
 shape = { length = 251.184, diameter = 120.0 }
+warnings = []
 
 [[server.tanks]]
 product = "DIESEL"
@@ -30,3 +32,4 @@ height = 47.6
 water = 0.0
 temp = 58.45
 shape = { length = 251.184, diameter = 120.0 }
+warnings = []

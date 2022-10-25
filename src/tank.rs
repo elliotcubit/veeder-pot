@@ -1,6 +1,24 @@
 use crate::config::{ShapeConfig, TankConfig};
+use serde::Deserialize;
+use std::fmt;
 
 const CUBIC_INCH_TO_GALLON: f32 = 0.004329;
+
+// See Page 42 of manual; there are many other warnings,
+#[derive(Deserialize, Clone)]
+pub enum Warning {
+    HighWaterAlarm,
+    HighWaterWarning,
+}
+
+impl fmt::Display for Warning {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Warning::HighWaterAlarm => write!(f, "HIGH WATER ALARM"),
+            Warning::HighWaterWarning => write!(f, "HIGH WATER WARNING"),
+        }
+    }
+}
 
 pub struct Tank {
     pub product: String,
@@ -9,6 +27,7 @@ pub struct Tank {
     // In gallons
     pub water: f32,
     pub temp: f32,
+    pub warnings: Vec<Warning>,
 
     shape: HorizontalCylinder,
 }
@@ -21,6 +40,7 @@ impl Tank {
             water: cfg.water,
             temp: cfg.temp,
             shape: HorizontalCylinder::new(&cfg.shape),
+            warnings: cfg.warnings.clone(),
         }
     }
 

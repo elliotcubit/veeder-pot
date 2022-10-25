@@ -145,4 +145,37 @@ impl Server {
             .to_string()
             .into_bytes()
     }
+
+    pub fn i205(&self, tank: usize) -> Vec<u8> {
+        let mut table = Table::new("{:^}   {:<} {:<}")
+            .set_line_end("\r\n")
+            .with_row(Row::from_cells(
+                ["TANK", "PRODUCT", "STATUS"].iter().cloned(),
+            ));
+
+        self.tanks
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| tank == 0 || *i == tank - 1)
+            .for_each(|(i, curr)| {
+                table.add_row(Row::from_cells(
+                    [
+                        format!("{:>2}", i + 1),
+                        curr.product.clone(),
+                        curr.warnings
+                            .first()
+                            .map(|w| w.to_string())
+                            .unwrap_or("NORMAL".to_string()),
+                    ]
+                    .iter()
+                    .cloned(),
+                ));
+
+                curr.warnings.iter().skip(1).for_each(|w| {
+                    table.add_row(Row::from_cells(["", "", &w.to_string()].iter().cloned()));
+                })
+            });
+
+        table.to_string().into_bytes()
+    }
 }

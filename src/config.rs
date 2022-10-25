@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::tank::Warning;
+use crate::tank::Warning::{HighWaterAlarm, HighWaterWarning};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -35,6 +37,7 @@ pub struct TankConfig {
     pub height: f32,
     pub water: f32,
     pub temp: f32,
+    pub warnings: Vec<Warning>,
 
     pub shape: ShapeConfig,
 }
@@ -77,6 +80,7 @@ impl Default for Config {
                             length: 251.184,
                             diameter: 120.0,
                         },
+                        warnings: vec![HighWaterAlarm, HighWaterWarning],
                     },
                     TankConfig {
                         product: "PREMIUM".to_string(),
@@ -87,6 +91,7 @@ impl Default for Config {
                             length: 251.184,
                             diameter: 120.0,
                         },
+                        warnings: vec![],
                     },
                     TankConfig {
                         product: "DIESEL".to_string(),
@@ -97,6 +102,7 @@ impl Default for Config {
                             length: 251.184,
                             diameter: 120.0,
                         },
+                        warnings: vec![],
                     },
                 ],
                 tc_volume_temp: 60.00,
