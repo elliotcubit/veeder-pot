@@ -89,14 +89,10 @@ impl Server {
                     .set_line_end("\r\n")
                     .with_row(Row::from_cells(["TANK", "PRODUCT LABEL"])),
                 |acc, (i, curr)| {
-                    acc.with_row(Row::from_cells(
-                        [
-                            format!("{:>2}", i + 1),
-                            format!("{:<20}", curr.product.clone()),
-                        ]
-                        .iter()
-                        .cloned(),
-                    ))
+                    acc.with_row(Row::from_cells([
+                        &format!("{:>2}", i + 1),
+                        &format!("{:<20}", curr.product),
+                    ]))
                 },
             )
             .to_string()
@@ -111,35 +107,27 @@ impl Server {
             .fold(
                 Table::new("{:^} {:<} {:>} {:>} {:>} {:>} {:>} {:>}")
                     .set_line_end("\r\n")
-                    .with_row(Row::from_cells(
-                        [
-                            "TANK",
-                            "PRODUCT",
-                            "VOLUME",
-                            "TC VOLUME",
-                            "ULLAGE",
-                            "HEIGHT",
-                            "WATER",
-                            "TEMP",
-                        ]
-                        .iter()
-                        .cloned(),
-                    )),
+                    .with_row(Row::from_cells([
+                        "TANK",
+                        "PRODUCT",
+                        "VOLUME",
+                        "TC VOLUME",
+                        "ULLAGE",
+                        "HEIGHT",
+                        "WATER",
+                        "TEMP",
+                    ])),
                 |acc, (i, curr)| {
-                    acc.with_row(Row::from_cells(
-                        [
-                            format!("{:>2}", i + 1),
-                            curr.product.clone(),
-                            format!("{:.0}", curr.fill()),
-                            format!("{:.0}", curr.tc_volume(self.tc_volume_temp)),
-                            format!("{:.0}", curr.ullage()),
-                            format!("{:.2}", curr.height),
-                            format!("{:.2}", curr.water),
-                            format!("{:.2}", curr.temp),
-                        ]
-                        .iter()
-                        .cloned(),
-                    ))
+                    acc.with_row(Row::from_cells([
+                        &format!("{:>2}", i + 1),
+                        &curr.product,
+                        &format!("{:.0}", curr.fill()),
+                        &format!("{:.0}", curr.tc_volume(self.tc_volume_temp)),
+                        &format!("{:.0}", curr.ullage()),
+                        &format!("{:.2}", curr.height),
+                        &format!("{:.2}", curr.water),
+                        &format!("{:.2}", curr.temp),
+                    ]))
                 },
             )
             .to_string()
@@ -149,27 +137,22 @@ impl Server {
     pub fn i205(&self, tank: usize) -> Vec<u8> {
         let mut table = Table::new("{:^}   {:<} {:<}")
             .set_line_end("\r\n")
-            .with_row(Row::from_cells(
-                ["TANK", "PRODUCT", "STATUS"].iter().cloned(),
-            ));
+            .with_row(Row::from_cells(["TANK", "PRODUCT", "STATUS"]));
 
         self.tanks
             .iter()
             .enumerate()
             .filter(|(i, _)| tank == 0 || *i == tank - 1)
             .for_each(|(i, curr)| {
-                table.add_row(Row::from_cells(
-                    [
-                        format!("{:>2}", i + 1),
-                        curr.product.clone(),
-                        curr.warnings
-                            .first()
-                            .map(|w| w.to_string())
-                            .unwrap_or("NORMAL".to_string()),
-                    ]
-                    .iter()
-                    .cloned(),
-                ));
+                table.add_row(Row::from_cells([
+                    &format!("{:>2}", i + 1),
+                    &curr.product,
+                    &curr
+                        .warnings
+                        .first()
+                        .map(|w| w.to_string())
+                        .unwrap_or("NORMAL".to_string()),
+                ]));
 
                 curr.warnings.iter().skip(1).for_each(|w| {
                     table.add_row(Row::from_cells(["", "", &w.to_string()].iter().cloned()));
