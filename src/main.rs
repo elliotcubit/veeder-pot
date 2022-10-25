@@ -37,8 +37,11 @@ fn log(writer: &mut Writer<File>, source_ip: String, code: String) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conf =
-        config::load_config("resources/config.toml").unwrap_or_else(|_| config::Config::default());
+    let conf = config::load_config("resources/config.toml").unwrap_or_else(|e| {
+        eprintln!("Could not parse config; using default. Error: {}", e);
+
+        config::Config::default()
+    });
 
     let listener = TcpListener::bind(conf.addr).await?;
 
