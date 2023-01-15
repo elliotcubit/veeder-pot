@@ -5,6 +5,7 @@ use crate::tank::Warning::{HighWaterAlarm, HighWaterWarning};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+use chrono_tz::Tz;
 
 use std::error::Error;
 
@@ -49,6 +50,7 @@ pub struct ServerConfig {
     pub tanks: Vec<TankConfig>,
 
     pub tc_volume_temp: f32,
+    pub timezone: Tz,
 }
 
 #[derive(Deserialize)]
@@ -106,6 +108,7 @@ impl Default for Config {
                     },
                 ],
                 tc_volume_temp: 60.00,
+                timezone: "America/New_York".parse().unwrap(),
             },
         }
     }

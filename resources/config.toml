@@ -3,6 +3,7 @@ log_file = "log.csv"
 
 [server]
 tc_volume_temp = 60.00
+timezone = "America/New_York"
 
 [server.header]
 line1 = "WENDYS BP"

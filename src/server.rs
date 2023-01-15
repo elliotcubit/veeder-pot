@@ -1,7 +1,8 @@
 use tabular::{Row, Table};
 
 use crate::tank::Tank;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
+use chrono_tz::Tz;
 
 use crate::config::ServerConfig;
 
@@ -11,6 +12,7 @@ pub struct Server {
 
     tanks: Vec<Tank>,
     tc_volume_temp: f32,
+    timezone: Tz,
 }
 
 impl Server {
@@ -24,16 +26,17 @@ impl Server {
             ],
             tanks: cfg.tanks.iter().map(|x| Tank::new(x)).collect(),
             tc_volume_temp: cfg.tc_volume_temp,
+            timezone: cfg.timezone,
         }
     }
 
     pub fn build_header(&self, code: &str) -> Vec<u8> {
-        // TODO use "local" time, not UTC
-        let now_utc: DateTime<Utc> = Utc::now();
+        let now = Utc::now().with_timezone(&self.timezone);
+
         [
             "\x01",
             code,
-            now_utc
+            now
                 .format("%b %e, %Y %l:%M %p")
                 .to_string()
                 .to_uppercase() // Needed for %b
